@@ -30,6 +30,13 @@ else
   miss "Pillow python package" "python3 -m pip install pillow"
 fi
 
+# 3b. OpenCV (optional: measures whether the product kept its size in the frame)
+if python3 -c "import cv2, numpy" >/dev/null 2>&1; then
+  ok "opencv (framing check)"
+else
+  printf "  OPTIONAL %s\n           fix: %s\n" "opencv: without it the framing check is skipped" "python3 -m pip install opencv-python-headless"
+fi
+
 # 4. curl (Amazon fetch)
 if command -v curl >/dev/null 2>&1; then
   ok "curl"

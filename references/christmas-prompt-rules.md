@@ -1,117 +1,100 @@
 # Christmas prompt rules
 
-Source: Jay's original Christmas prompt (the one he refined with small strategies) plus the product rule from his seasonal talk. These rules are non-negotiable. Every prompt
-the skill sends to gpt-image-2 is built from them, and every output is judged against them.
+Source: Jay's Christmas prompt, refined into the STRONG and WINTER versions he chose on 5.9.2026 for
+the Cyprus talk, and moved into this skill on 26.9.2026. Every prompt the skill sends to gpt-image-2
+is built from these rules, and every output is judged against them.
 
 ## The one idea
 
-The product is the thing being sold. Christmas happens AROUND it, never TO it. A shopper
-must be able to put the seasonal image next to the main image and see the identical product.
+The product is the thing being sold. Christmas happens AROUND it, never TO it. A shopper must be
+able to put the seasonal image next to the main image and see the identical product. And the
+Christmas must be unmistakable: it has to read as Christmas at Amazon thumbnail size, where the
+subtle version disappeared.
 
-## Rules
+## What never moves (KEEP, in every prompt)
 
-1. Product untouched. Same shape, color, angle, size, position, label text, packaging.
-   Only the environment changes.
-2. Zero color filters. No red or green tint over the whole image. Seasonal color lives
-   only in background elements (tree, gifts, lights, wreath).
-3. Max 3 props in total (gifts, candles, greenery). Props sit only on an existing surface,
-   at the far side from the product, never next to, on or touching it. If there is no
-   natural place for a prop, no props. (Decided 2026-09-05: talk said 2, prompt said "a few".)
-4. People stay EXACTLY as they are: same face, pose, hands and clothing. No sweaters, no
-   scarves. The one allowed change: one natural red Santa hat on ONE adult, matching head
-   shape, shadow and lighting. Never on a child, never on the product.
-5. Never darken the image. Christmas is warm and bright. The output must be as bright as
-   the original or brighter. No moody, dim, candlelit look.
-6. Christmas vocabulary: warm lights, soft bokeh, light garland, small greenery, candles,
-   a few wrapped gift boxes. A tree ONLY when the scene is clearly a home living room, and
-   then exactly one, placed naturally. Outdoors, kitchens, campsites, studios: no tree.
-   No snow overlays, no snow on ground or objects. Snow only as a view through a window.
-   No fake sparkles, no glitter, no floating objects, no cartoon items.
-   If the image carries graphic elements (icons, badges), soft Christmas graphics are allowed
-   around them. Never a Santa hat, bow, ribbon or ornament on the product itself.
-7. Photorealistic. Matches the original photo's lens, lighting direction, camera height
-   and depth of field.
-8. No added text, logos, badges or watermarks.
+1. The product: same shape, color, size, position, angle, label and packaging. Nothing added on
+   it, in front of it or touching it. Things that were already on it (a drink on a cooler) stay.
+2. Every headline, label and graphic element, exactly as written, same position.
+3. Every person's face, identity, pose, hands and expression.
+4. The camera angle, framing and lens.
+5. Photorealistic, matching light and shadows. No cartoon items, no glitter, no floating objects,
+   no added text or logos, no sparkle or snow overlay pasted flat over the photo.
+6. As bright as the original or brighter. Warm and festive, never moody or dim. No color filter.
+
+## What Christmas looks like (two modes, chosen per image)
+
+**scene** (a lifestyle photo): ONE large anchor plus 3 or 4 supporting elements, warm string lights
+used generously. Anchor: a tall, fully decorated, lit Christmas tree in any home interior; elsewhere a
+big lit wreath, a lit garland along a shelf, railing or fence, or a small decorated evergreen outdoors.
+Supporting: lit garland, wrapped gifts on the floor or a far surface, stockings, a wreath, snow falling
+outside a window, a light dusting of snow on outdoor ground. Clothing stays unchanged.
+
+**winter** (a summer or warm-weather scene: a sunny patio, a pool, a beach, people in summer
+clothes): the scene becomes full winter. Bright overcast winter light, fresh snow on the ground and
+outdoor surfaces, bare or snow-dusted trees. The same people in the same poses get warm winter clothing
+that fits them (knit sweaters, jackets, beanies, scarves, boots). Summer drinks and props that are
+not the product may become winter ones. Then the Christmas additions. This is the one place clothing
+changes (Jay, 5.9: a tank top in a Christmas image reads wrong; snow is the fastest Christmas cue).
+
+Santa hat, in every mode: at most one, on one adult, named in the scene line; never on a child. A
+beanie or other winter hat is clothing, not a Santa hat.
 
 ## Which images get transformed
 
-- Main image: never. Amazon requires a pure white background. Skip.
-- Lifestyle / product in a scene: yes. This is where Christmas sells.
-- Product on white with no scene (secondary packshots): yes if a scene can be built
-  around it, otherwise skip. Default: transform, the model builds a tabletop scene.
-- Text-heavy infographic (callouts, comparison charts, feature bullets): skip by default.
-  Generation mangles the text. Note it in the report so the seller can re-do it in
-  their design tool with a seasonal background.
-- Image with a brand logo as the main content: skip.
-- Color-variant packshots (the same product in other colors on white, usually a run of
-  near-identical images at the end of the gallery): skip. Each is the main image of a
-  sibling ASIN and main images stay white. Say so in the report.
-- Multi-panel collages: skip. There is no single scene to decorate.
-- Summer scenes (beach, pool, shorts, sun): transform, but keep it to one or two tiny
-  accents and mark the image "summer scene" in the report. Clothing never changes, so a
-  heavy Christmas treatment on a beach reads wrong to cold-climate shoppers; a light touch
-  reads as "holiday in the sun". The seller decides whether to use it.
+Lifestyle images only: the product in a real setting, with or without people, with or without a
+headline band. Everything else is skipped and named in the report:
 
-## Prompt template
+- Main image: never. Amazon requires a pure white background.
+- The product on a plain white or studio background, in any form: "product on white". (Jay, 26.9.)
+- A color variant on white: "color variant". It is the main image of a sibling listing.
+- Text-heavy infographic (five or more text elements, bullets, specs, arrows, diagrams, text across the
+  product): generation mangles small text; the seller can redo it in a design tool.
+- Brand logo card, brand graphic, retail box, multi-panel collage, several colors side by side.
 
-The script builds every prompt from this template. `{scene}` is the only variable and is
-written per image in plan.json by the agent after looking at the picture.
+## Prompt templates
 
-```
-Create a clean premium Christmas version of this exact image. Keep the original photo fully
-intact with no changes to people, faces, clothing, poses, hands, product shape, materials,
-colors, lighting, shadows, depth, or camera angle. Keep every existing headline, label and
-graphic element exactly as written. Add only subtle realistic holiday accents that fit
-naturally. Use warm lights, soft bokeh, light garland, small greenery, candles, or wrapped
-gift boxes: at most three added props in total, placed on an existing surface at the far
-side from the product, never next to it. Do not add Christmas trees unless the scene is clearly a home living
-room. In a living room you may add one realistic tree placed naturally. In any other
-location do not add any trees. All additions must match the real lighting, shadows, and
-color tones. Keep everything photorealistic with no cartoon items, fake sparkles, snow
-overlays, glitter, or floating objects. No snow on the ground or on objects; snow may
-appear only as a view through a window. If adults appear you may add one natural red Santa
-hat to one adult. The hat must match head shape, shadow, and lighting. If the image includes
-graphic elements you may add soft Christmas graphics or elements. Nothing may be placed on
-or touching the product. The result should look naturally decorated for Christmas. Warm,
-elegant and subtle.
-Scene notes for this image: {scene}
-```
+In `scripts/santa.py`: `STRONG_TEMPLATE` and `WINTER_TEMPLATE`, each ending in `KEEP`. `{scene}` is
+the only variable, written per image in plan.json after looking at the picture; `mode` picks the
+template.
 
 ## Writing a good `{scene}` line
 
-Look at the original first. Name what is already there and what changes, in one or two
-sentences. Good examples:
+Say what gets added and WHERE, anchored to what is in the picture, and what must stay exactly.
 
-- "Home living room: one realistic tree softly out of focus by the window, a light garland
-  on the shelf, two wrapped gifts on the floor beside the sofa. Santa hat on the man."
-- "Kitchen, not a living room: no tree. Small greenery and a candle on the counter to the
-  right, well away from the product. Warm lights in the bokeh."
-- "Outdoor backyard at night: no tree, no snow. Garland along the fence, warm lights already
-  there stay, two wrapped gift boxes on the table. Santa hat on one adult."
-- "Plain white packshot: keep the white studio feel; add a small sprig of greenery and one
-  wrapped gift box on the surface far from the product, soft warm bokeh behind."
+- "A fully decorated Christmas tree with warm lights clearly visible behind the sofa on the right, a
+  lit garland with bows along the windowsill, three wrapped gift boxes on the floor to the far left, and
+  snow falling outside the window. Keep the dog and the gray dog bed exactly as they are, nothing on
+  the bed."
+- "Warm string lights along the whole edge of the orange tent and between the trees above, a large
+  evergreen wreath with a red bow on the tent door, three wrapped gifts beside the tent, a light dusting
+  of snow on the ground. One natural red Santa hat on the father only. Keep the tent orange."
+- (winter) "Warm string lights along the fence, a decorated small evergreen with lights in the corner of
+  the patio, two wrapped gift boxes on the far side. Keep the drinks on the cooler lid."
 
-Bad scene lines: "make it Christmassy" (no anchor), "add a red glow" (a filter),
-"put a bow on it" (touches the product), "cozy candle light" (darkens).
+Bad: "make it Christmassy" (no anchor), "add a red glow" (a filter), "put a bow on it" (touches the
+product), "Santa hats on everyone".
 
 ## Self-check after generation
 
-For each before/after pair, look at both and answer:
-
 1. Same product? Shape, color, angle, size, label text. Any drift = FAIL.
-2. Anything on or touching the product? = FAIL.
+2. Anything ADDED on, in front of or touching the product, or the product hidden? = FAIL.
 3. Darker than the original? = FAIL.
 4. Global tint? = FAIL.
-5. More than two props, or a prop floating in air? = FAIL.
-6. Person changed (face, pose, clothing)? = FAIL. More than one Santa hat, or a hat on a child? = FAIL.
-8. Tree outside a living room, or snow overlay, or glitter? = FAIL.
-7. Generated text or logos? = FAIL.
+5. Anything floating, or resting on nothing? = FAIL.
+6. A face, pose or hands changed, clothing changed outside winter mode, more than one Santa hat, or a
+   hat on a child? = FAIL.
+7. Generated text or logos, or a headline changed? = FAIL.
+8. Glitter, cartoon items, a pasted overlay? = FAIL.
+9. Not obviously Christmas at thumbnail size? = FAIL.
+10. Product smaller or moved in the frame? MEASURED by the script (scale under 0.88 or a shift over
+    12 percent of the width) = FAIL. In winter mode the whole scene changes, so a low-confidence match
+    is left to the eye and question 1.
 
-One regeneration per failing image, with the failure written into the scene line
-("the product must stay matte black, do not add a ribbon"). After that, report it as
-not stage-ready and move on.
+One regeneration per failing image, with the failure written into the scene line. After that, report
+it as not stage-ready and move on.
 
-## Decisions log (Jay, 2026-09-05)
+## Decisions log (Jay, 2026-09-05, superseded 26.9 by the STRONG/WINTER rules above)
 Where the seasonal talk and Jay's Christmas prompt disagreed, the prompt won on four and a
 merge won on one:
 - Clothing: unchanged (talk said sweaters).
@@ -119,3 +102,47 @@ merge won on one:
 - Tree: only in a home living room, exactly one (talk had a tree almost everywhere).
 - Santa hat: one, on one adult (talk said none).
 - Props: max 3, at the far side from the product (talk said 2, prompt said "a few").
+
+## Decisions log (26.9.2026, catalog mode)
+- The two looking passes (classify, verify) run on gpt-5.4 vision, so a store of 300 products
+  does not need 2,000 agent looks. gpt-5.4-mini flipped one lifestyle frame to infographic
+  between two runs on the same gallery; gpt-5.4 gave the same eight answers twice.
+- Definitions the verify pass uses. A PROP is a discrete added object: each gift box, a candle,
+  a bundle of greenery. String lights, bokeh, a garland along an edge and a wreath on a far wall
+  are vocabulary, not props. A TREE is a full standing conifer with ornaments; a garland or a
+  sprig is not a tree. Before these definitions the gate failed three of four good frames
+  (it counted a garland as a tree and lights as props).
+- The gate tolerates four props and names the count in the verdict; five fails. The rule for
+  the prompt stays three.
+- A headline plus a sub-line in a colored band is a lifestyle frame, not an infographic.
+  Infographic means five or more text elements, bullets/specs/arrows/diagrams, or text across
+  the product's body.
+- 26.9 later, from three stores (Melissa & Doug, Lodge, Dash, 185 images at low): a packshot whose
+  aspect does not match the output size gets reframed and shrinks. Fix: pad to the output
+  aspect with the border colour, crop back. And the size check is MEASURED (template match,
+  scale under 0.88 fails), never asked of the model. The verify pass also gets the classifier's
+  `seen` line, so it knows a sofa-and-rug room is a living room where one tree is allowed.
+- Disney-licensed products (Mickey, princess plates) are refused by OpenAI moderation. Logged,
+  skipped, no retry; the report names them.
+- 26.9, packshots: even with pad-and-crop, ten packshots shrank to 75-88 percent because the old
+  rule told the model to build a tabletop scene. A camera-lock sentence at the start of every
+  packshot scene (enforced in code) kept all ten at full size at low quality; high was not
+  needed. Tight packshots and color variants are now skipped: with the lock they only get a
+  sprig in a corner, and a color variant is another listing's main image. On two Lodge
+  galleries that cut the transforms from 9 to 3-4 and from 8 to 3.
+- 26.9, quality: one run at medium, ready to upload (Jay). Measured on four frames: low $0.025 /
+  15 s, medium $0.087 / 41 s, high $0.298 / 118 s. Text identical at all three; low draws hats
+  and skin waxier; high adds nothing visible. No low-preview-then-high flow: the second run is a
+  new image.
+- 26.9, Jay chose the rich version for the skill itself ("I want it to do these things, change the
+  clothes to fit the weather"): the STRONG and WINTER prompts he approved for Cyprus on 5.9 replace
+  the subtle rules. Tested on nine images at medium (the Cyprus patio, dog and mixer, and six from the
+  three demo stores): all read as Christmas at thumbnail size; the patio became full winter with the
+  same people in coats and the cooler untouched. The verifier needed two definitions to stop false
+  fails: "nothing ADDED on the product" (the drinks were on the cooler in the original) and "a beanie
+  is clothing, not a Santa hat". It still caught a real drift on a packshot (the dashboard moved down
+  and its printed logo was redrawn).
+- 26.9, Jay: Santa dresses lifestyle images only. Every product-on-white image skips ("product on
+  white"), enforced in code as well as in the classifier, so the packshot mode and its camera lock
+  are gone. Tested on three galleries: every white-background frame skipped, every lifestyle frame
+  transformed.
