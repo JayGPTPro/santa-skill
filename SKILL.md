@@ -21,7 +21,7 @@ secondary images in `santa/<ASIN>/christmas/`, a before/after `contact-sheet.htm
 short `report.md`. The main image is never touched (Amazon wants it on pure white). The
 product is never touched either: same shape, color, angle, label. The world around it gets a
 Christmas you can see at thumbnail size: a lit tree, garlands, gifts; a summer scene turns to
-snow and winter coats.
+snow and winter coats; a pool or a beach keeps its sun and swimwear and gets a Christmas in the sun.
 
 Many products in: `/santa-skill` with the product links pasted after it. Out: the same
 thing for every product, one folder per ASIN, and one `index.html` that shows the whole set
@@ -67,6 +67,7 @@ else `~/Downloads/Claude/.env`). gpt-image-2 needs a verified OpenAI org.
 |---|---|
 | one ASIN, one product link, one folder of images | single listing, Steps 1 to 5 below |
 | two or more product links or ASINs (pasted, or in a .txt), or a Seller Central report | catalog, the section after Step 5 |
+| a folder of product folders (one product each, images in gallery order), or several product folders | catalog, from the folders: no Amazon fetch |
 | "my store", "my whole catalog", a store link, with no product list | ask for the list, in these words: "Paste the product links or ASINs you want dressed, your gift-worthy best sellers first. 20 is a good start. For the whole catalog, download the Active Listings Report from Seller Central (Reports > Inventory Reports) and give me the file." Then catalog mode |
 
 Why the list and not a store link: "the store" is three different pages on Amazon. The Brand
@@ -141,6 +142,10 @@ in the rules file):
   elsewhere) plus 3 or 4 supporting elements, string lights generously. Clothing unchanged.
 - `winter`: a summer scene becomes full winter: snow outdoors, the same people in winter clothing in
   the same poses, then the Christmas additions.
+- `sun`: people in the water, at a pool or on a beach, or in swimwear. Never snow or coats: the same
+  swimwear and sunshine, plus string lights, tinsel, a small decorated palm or tree, gifts, red and gold.
+  It wins over `winter`; the code also turns a winter pick whose `seen` line names a pool, a beach, the
+  sea or swimwear into `sun`.
 At most one Santa hat, on an adult. The scene line says what goes WHERE and what must stay exactly
 ("Keep the dog and the gray dog bed exactly as they are, nothing on the bed.").
 
@@ -248,10 +253,17 @@ page by page, one attempt each, stops on the first bot check and keeps what it r
 `.html` of that page saved from the browser. A Brand Store or `/shop/` link is refused with
 the words to ask for a list instead; relay them.
 
+No Amazon at all: `discover path/to/store/` (its subfolders are one product each) or
+`discover folderA folderB`. Each folder holds its images in gallery order by name (01 is the main
+image); an optional `product.json` (`{"asin": "B0...", "title": "..."}`) names the product and its
+output folder, else the folder name does. `run`, `status` and `index` work the same.
+
 Writes `santa-catalog/<name>/catalog.json` and prints how many products were found, how many
 were taken (default cap 50, in the order given; `--max 300` takes 300, `--max 0` all), and a
 rough cost and time estimate, and the `run` line with a budget that covers it. Show those
-lines to the user.
+lines to the user, then start C2 straight away with that `run` line. Do not stop to ask: this
+is an autopilot skill and the budget is the answer. Only a user who asked for a dry run, or
+named their own budget, changes that.
 
 ## C2: run
 
@@ -300,9 +312,9 @@ about 20 minutes, and three bot checks in a row pause the run instead of burning
 
 Four lines, then two paths. Products done of products found; Christmas images made and
 how many passed every check; estimated cost and wall time; anything held back (budget,
-blocks, listings with fewer than two images). Then `santa-catalog/<name>/index.html`
-(open it) and the per-ASIN folders. The images are ready to upload. Remind them
-a bigger budget is the upload set, and that `originals/` is their way back in January.
+blocks, listings with fewer than two images). Then open the page for them
+(`open santa-catalog/<name>/index.html`) and give the path of the per-ASIN folders. The images
+are ready to upload. Remind them that `originals/` is their way back in January.
 
 Spot-check before you hand it over: open index.html, then open two or three
 contact sheets and look at the product in each pair yourself. The gate is good; it is not you.

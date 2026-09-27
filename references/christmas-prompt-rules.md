@@ -22,7 +22,7 @@ subtle version disappeared.
    no added text or logos, no sparkle or snow overlay pasted flat over the photo.
 6. As bright as the original or brighter. Warm and festive, never moody or dim. No color filter.
 
-## What Christmas looks like (two modes, chosen per image)
+## What Christmas looks like (three modes, chosen per image)
 
 **scene** (a lifestyle photo): ONE large anchor plus 3 or 4 supporting elements, warm string lights
 used generously. Anchor: a tall, fully decorated, lit Christmas tree in any home interior; elsewhere a
@@ -30,12 +30,19 @@ big lit wreath, a lit garland along a shelf, railing or fence, or a small decora
 Supporting: lit garland, wrapped gifts on the floor or a far surface, stockings, a wreath, snow falling
 outside a window, a light dusting of snow on outdoor ground. Clothing stays unchanged.
 
-**winter** (a summer or warm-weather scene: a sunny patio, a pool, a beach, people in summer
+**winter** (a summer or warm-weather scene: a sunny patio, a backyard, people in summer
 clothes): the scene becomes full winter. Bright overcast winter light, fresh snow on the ground and
 outdoor surfaces, bare or snow-dusted trees. The same people in the same poses get warm winter clothing
 that fits them (knit sweaters, jackets, beanies, scarves, boots). Summer drinks and props that are
 not the product may become winter ones. Then the Christmas additions. This is the one place clothing
 changes (Jay, 5.9: a tank top in a Christmas image reads wrong; snow is the fastest Christmas cue).
+
+**sun** (people in the water, at a pool or on a beach, or in swimwear): Christmas in the sun. Never snow,
+never winter clothing: the same people keep their swimwear and summer clothes, and the sunshine, water,
+sand and pool deck stay. Warm string lights generously, tinsel, a small decorated palm or Christmas tree on
+the deck or sand, wrapped gifts on the far side, red and gold accents. This wins over winter (Jay, 27.9:
+people in a pool or on a beach wearing coats in the snow is absurd). The classifier picks it, and the code
+turns any winter pick whose `seen` line names a pool, a beach, the sea or swimwear into sun.
 
 Santa hat, in every mode: at most one, on one adult, named in the scene line; never on a child. A
 beanie or other winter hat is clothing, not a Santa hat.
@@ -54,7 +61,7 @@ headline band. Everything else is skipped and named in the report:
 
 ## Prompt templates
 
-In `scripts/santa.py`: `STRONG_TEMPLATE` and `WINTER_TEMPLATE`, each ending in `KEEP`. `{scene}` is
+In `scripts/santa.py`: `STRONG_TEMPLATE`, `WINTER_TEMPLATE` and `SUN_TEMPLATE`, each ending in `KEEP`. `{scene}` is
 the only variable, written per image in plan.json after looking at the picture; `mode` picks the
 template.
 
@@ -71,6 +78,9 @@ Say what gets added and WHERE, anchored to what is in the picture, and what must
   of snow on the ground. One natural red Santa hat on the father only. Keep the tent orange."
 - (winter) "Warm string lights along the fence, a decorated small evergreen with lights in the corner of
   the patio, two wrapped gift boxes on the far side. Keep the drinks on the cooler lid."
+- (sun) "Warm string lights and gold tinsel along the pool fence, a small decorated palm with red and gold
+  ornaments at the far pool corner, three wrapped gifts on the far deck. One natural red Santa hat on the
+  man singing only. Keep everyone's swimwear and the float rings exactly as they are."
 
 Bad: "make it Christmassy" (no anchor), "add a red glow" (a filter), "put a bow on it" (touches the
 product), "Santa hats on everyone".
@@ -85,7 +95,7 @@ product), "Santa hats on everyone".
 6. A face, pose or hands changed, clothing changed outside winter mode, more than one Santa hat, or a
    hat on a child? = FAIL.
 7. Generated text or logos, or a headline changed? = FAIL.
-8. Glitter, cartoon items, a pasted overlay? = FAIL.
+8. Glitter, cartoon items, a pasted overlay, or any snow or frost in sun mode? = FAIL.
 9. Not obviously Christmas at thumbnail size? = FAIL.
 10. Product smaller or moved in the frame? MEASURED by the script (scale under 0.88 or a shift over
     12 percent of the width) = FAIL. In winter mode the whole scene changes, so a low-confidence match

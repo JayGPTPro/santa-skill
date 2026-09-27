@@ -83,7 +83,19 @@ WINTER_TEMPLATE = (
     "and props that are not the product may become winter ones. Add Christmas: {scene} At most one natural red "
     "Santa hat, on one adult only, never on a child. " + KEEP
 )
-TEMPLATES = {"scene": STRONG_TEMPLATE, "winter": WINTER_TEMPLATE}
+# Christmas in the sun (Jay, 27.9.2026): people in a pool or on a beach wearing coats in the snow is absurd.
+# Water, a pool, a beach or swimwear keep the warm setting and the same clothes; the Christmas comes to them.
+SUN_TEMPLATE = (
+    "Create a rich, unmistakable Christmas-in-the-sun version of this exact image, one that reads as Christmas "
+    "even as a small thumbnail. This is a warm-weather water scene, so the warm setting stays: the same sunshine, "
+    "the same water, sand or pool deck, and the same swimwear and summer clothes on the same people. No snow, no "
+    "frost, no winter clothing. Add a Christmas that belongs in the sun: {scene} Use warm string lights "
+    "generously, with red and gold accents. At most one natural red Santa hat, on one adult only, never on a "
+    "child, matching head shape, shadow and lighting. " + KEEP
+)
+TEMPLATES = {"scene": STRONG_TEMPLATE, "winter": WINTER_TEMPLATE, "sun": SUN_TEMPLATE}
+# The code check behind the classifier's "sun" call: a winter pick whose picture holds water or swimwear.
+WATER_WORDS = re.compile(r"\b(pools?|poolside|beach(es)?|bikinis?|swim\w*|ocean|sea|seaside|surf(ing|er|ers|board)?)\b", re.I)
 
 # Rough per-token rates used only for the cost ESTIMATE in report.md.
 # Published gpt-image-1 rates; gpt-image-2 is billed the same way (tokens in, image tokens out).
@@ -346,23 +358,37 @@ def fetch_listing(asin, run, keep_page=True, host="www.amazon.com"):
     return ("ok" if ok >= 2 else "few"), ok
 
 
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def folder_images(src_path):
+    """The images in a product folder, in gallery order (the file names sort as the gallery: 01 is main)."""
+    return [p for p in sorted(src_path.iterdir()) if p.suffix.lower() in IMAGE_EXTS and not p.name.startswith(".")]
+
+
+def copy_folder(src_path, run, asin=None, title=None):
+    """A folder of product images instead of an Amazon fetch: copy to originals/, write listing.json.
+    Returns the number of images copied."""
+    originals = run / "originals"
+    originals.mkdir(parents=True, exist_ok=True)
+    files = folder_images(src_path)
+    for p in files:
+        shutil.copy(p, originals / p.name)
+    listing = {"asin": asin or src_path.name, "title": title or src_path.name,
+               "source": "folder", "folder": str(src_path), "images": len(files),
+               "image_files": [p.name for p in files]}
+    (run / "listing.json").write_text(json.dumps(listing, indent=2, ensure_ascii=False))
+    log(f"Copied {len(files)} images from {src_path} to {originals}")
+    return len(files)
+
+
 def cmd_fetch(args):
     src = args.source
     out = Path(args.out) if args.out else None
     src_path = Path(os.path.expanduser(src))
     if src_path.is_dir():
         run = out or Path.cwd() / "santa" / src_path.name
-        originals = run / "originals"
-        originals.mkdir(parents=True, exist_ok=True)
-        n = 0
-        for p in sorted(src_path.iterdir()):
-            if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-                shutil.copy(p, originals / p.name)
-                n += 1
-        listing = {"asin": src_path.name, "title": args.title or src_path.name,
-                   "source": "folder", "folder": str(src_path), "images": n}
-        (run / "listing.json").write_text(json.dumps(listing, indent=2))
-        log(f"Copied {n} images from {src_path} to {originals}")
+        n = copy_folder(src_path, run, title=args.title)
         if n < 2:
             sys.exit("Fewer than 2 images. Nothing to transform beyond a main image.")
         return
@@ -464,9 +490,12 @@ Decide role, action, and (for transforms) a scene line for gpt-image-2. Go throu
    or not, with or without a headline band. role lifestyle, TRANSFORM. A headline plus a
    sub-line is the normal Amazon lifestyle frame; gpt-image-2 keeps short text intact and a later pass
    reads it back. When you hesitate between lifestyle and infographic, choose lifestyle.
-- mode, for every transform: "winter" for a summer or warm-weather scene (outdoors in sun, a patio, a
-  pool or beach, people in summer clothes), which becomes a full winter scene with snow and winter
-  clothing; "scene" for everything else. Set summer=true with "winter".
+- mode, for every transform: "sun" when people are in the water, at a pool or on a beach, or in swimwear
+  (a pool, a beach, a swim spot, even with nobody in the water): snow and coats there are absurd, so the
+  warm setting and the clothes stay and Christmas comes in the sun. "sun" wins over "winter". "winter"
+  for any other summer or warm-weather scene (outdoors in sun, a patio, a backyard, people in summer
+  clothes), which becomes a full winter scene with snow and winter clothing; "scene" for everything else.
+  Set summer=true with "winter" only.
 - Scene line: what gets added and WHERE, anchored to what is IN this picture. The treatment is RICH:
   it must read as Christmas at thumbnail size.
   "scene": ONE large anchor plus 3 or 4 supporting elements. Anchor: a tall, fully decorated Christmas
@@ -478,6 +507,9 @@ Decide role, action, and (for transforms) a scene line for gpt-image-2. Go throu
   "winter": the Christmas additions (lights along the fence, a small decorated evergreen in the corner,
   gifts on the far side) plus anything product-specific that must stay ("Keep the drinks on the cooler
   lid").
+  "sun": a Christmas that belongs in the heat: warm string lights along the umbrella, railing or fence, a
+  small decorated palm or Christmas tree on the deck or sand, tinsel, wrapped gifts on the far side, red and
+  gold accents. Never snow, never winter clothing.
   Santa hat: name the adult who gets it ("One natural red Santa hat on the father only"), or write
   "No Santa hat (children only)" when only children appear. Never more than one.
   Say what must stay exactly ("Keep the dog and the gray dog bed exactly as they are, nothing on the bed.").
@@ -495,7 +527,7 @@ Decide role, action, and (for transforms) a scene line for gpt-image-2. Go throu
 - reason: for skips, why, in five words or fewer.
 
 Return JSON only:
-{{"seen": "...", "role": "...", "action": "transform|skip", "mode": "scene|winter", "scene": "...",
+{{"seen": "...", "role": "...", "action": "transform|skip", "mode": "scene|winter|sun", "scene": "...",
   "reason": "...", "summer": false, "text_on_image": "the headline/labels you can read, or empty"}}"""
 
 
@@ -570,6 +602,11 @@ def cmd_classify(args):
                         "mode": d.get("mode", "")})
             if action == "transform":
                 img["mode"] = prompt_mode(img if img["mode"] in TEMPLATES else {**img, "mode": ""})
+                if img["mode"] == "winter" and WATER_WORDS.search(img["seen"]):
+                    # a pool, a beach or swimwear never gets snow and coats (Jay, 27.9.2026). Enforced here
+                    # too, and the winter line's snow is dropped so it cannot argue with the sun template.
+                    img.update({"mode": "sun", "summer": False,
+                                "scene": re.sub(r"(,\s*(and\s+)?|\s+and\s+)?[^,.]*\bsnow\w*[^,.]*", "", img["scene"])})
             else:
                 img["mode"] = ""
             if action == "transform" and not img["scene"].strip():
@@ -592,7 +629,9 @@ What the original shows (from the classifier): "{seen}". Mode: "{mode}".
 The treatment is meant to be RICH, so do not fail an image for having a lot of Christmas: a large
 anchor (a lit tree in any home interior, a big wreath, lit garlands) plus several gifts, stockings and
 string lights is correct. In mode "winter" a summer scene becomes full winter: snow outdoors and warm
-winter clothing on the same people in the same poses is correct.
+winter clothing on the same people in the same poses is correct. In mode "sun" (people in the water, at
+a pool or on a beach, or in swimwear) the warm setting and the swimwear stay: any snow, frost or winter
+clothing there is a failure.
 
 Answer each question about B compared to A:
 1. same_product: identical shape, color, angle, size, label text, packaging? (drift = false)
@@ -608,7 +647,8 @@ Answer each question about B compared to A:
    fur trim and a pompom), on an adult, never a child? A knit beanie or any other winter hat is
    clothing, not a Santa hat.
 7. text_ok: every headline and label from A still present and spelled the same, no invented text or logos?
-8. no_banned: no glitter, no cartoon items, no sparkle or snow overlay pasted flat over the photo?
+8. no_banned: no glitter, no cartoon items, no sparkle or snow overlay pasted flat over the photo? In mode
+   "sun", no snow or frost anywhere?
 9. christmas_obvious: would a shopper see "Christmas" at a glance at thumbnail size?
 stage_ready is true only if ALL nine are true. Write a one or two sentence verdict saying what
 changed and what, if anything, drifted. If not ready, write regen_note: one sentence of instruction

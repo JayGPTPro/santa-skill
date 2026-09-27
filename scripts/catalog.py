@@ -16,6 +16,10 @@ SOURCE is one of (the first is the one to ask for):
   the seller's product list    https://www.amazon.com/s?me=SELLERID. Works until Amazon bot-checks it
                                (measured: after four fetches in ten minutes)
   a saved copy of that page    the .html from the browser when curl is bot-checked
+  local product folders        one folder whose subfolders are one product each, or the product folders
+                               themselves. Images in gallery order by name (01 = main). No Amazon at all.
+                               Optional product.json per folder: {"asin": "...", "title": "..."}; the asin
+                               names the output folder, else the folder name does.
   Brand Store and /shop/ pages are refused: JavaScript, and often only part of the catalog.
 
 Caps and stops, by design:
@@ -36,6 +40,7 @@ Layout of the run folder:
 import argparse
 import math
 import csv
+import hashlib
 import html
 import json
 import os
@@ -157,6 +162,36 @@ def read_asin_file(path, host="www.amazon.com"):
     return santa.refs_from_text(text), titles
 
 
+def read_product_folders(paths):
+    """Local product folders instead of Amazon: one parent whose subfolders are one product each,
+    or the product folders themselves. Images in gallery order by file name (01 is the main image).
+    An optional product.json per folder names it: {"asin": "...", "title": "..."}; else the folder name.
+    Returns (refs, bad, titles, folders): refs is [(id, None)], folders maps id -> folder path."""
+    dirs = paths
+    if len(paths) == 1 and not santa.folder_images(paths[0]):
+        dirs = sorted(p for p in paths[0].iterdir() if p.is_dir() and not p.name.startswith((".", "_")))
+    refs, bad, titles, folders = [], [], {}, {}
+    for d in dirs:
+        imgs = santa.folder_images(d)
+        if not imgs:
+            bad.append((d.name + "/", "no images in the folder"))
+            continue
+        meta = {}
+        if (d / "product.json").exists():
+            try:
+                meta = json.loads((d / "product.json").read_text())
+            except json.JSONDecodeError as e:
+                bad.append((d.name + "/product.json", f"not valid JSON ({e.msg}), using the folder name"))
+        pid = re.sub(r"[^A-Za-z0-9_-]+", "-", str(meta.get("asin") or d.name)).strip("-")[:60] or "product"
+        base, k = pid, 2
+        while pid in folders:   # two folders, one name: the second gets -2
+            pid, k = f"{base}-{k}", k + 1
+        refs.append((pid, None))
+        folders[pid] = str(d.resolve())
+        titles[pid] = str(meta.get("title") or d.name)
+    return refs, bad, titles, folders
+
+
 STORE_HELP = (
     "Give me the products instead: paste the product links or ASINs (your gift-worthy best sellers;\n"
     "20 is a good start), or put them one per line in a .txt. For the whole catalog, Seller Central >\n"
@@ -168,11 +203,20 @@ def cmd_discover(args):
     src = args.source
     seller, titles, total, note = None, {}, None, ""
     bad = []
+    folders = {}
     one = src[0] if len(src) == 1 else ""
     f = Path(os.path.expanduser(one)) if one else None
+    dirs = [Path(os.path.expanduser(s)) for s in src]
     if f is not None and not f.exists() and one.lower().endswith((".txt", ".csv", ".tsv", ".html", ".htm")):
         sys.exit(f"File not found: {one}")
-    if f is not None and f.is_file() and one.lower().endswith((".html", ".htm")):
+    if all(d.is_dir() for d in dirs):
+        # local product folders: no Amazon at all
+        refs, bad, titles, folders = read_product_folders(dirs)
+        source = str(dirs[0].resolve()) if len(dirs) == 1 else "product folders"
+        name = re.sub(r"[^A-Za-z0-9_-]+", "-", dirs[0].resolve().name)[:40] if len(dirs) == 1 else "my-store"
+        if len(refs) == 1 and len(dirs) == 1 and santa.folder_images(dirs[0]):
+            name = refs[0][0]
+    elif f is not None and f.is_file() and one.lower().endswith((".html", ".htm")):
         text = f.read_text(encoding="utf-8", errors="ignore")
         asins, titles, total, _ = parse_storefront(text)
         refs = [(a, "www.amazon.com") for a in asins]
@@ -200,6 +244,10 @@ def cmd_discover(args):
         log(f"  skipped {item[:80]}: {why}")
     asins = [a for a, _ in refs]
     hosts = dict(refs)
+    if not asins and all(d.is_dir() for d in dirs):
+        log("No product folders with images found. Give a folder whose subfolders are one product each,")
+        log("or the product folders themselves, each holding its images in gallery order (01 = main image).")
+        sys.exit(2)
     if not asins:
         log("No products found. " + note)
         if note or source.startswith("http"):
@@ -213,7 +261,9 @@ def cmd_discover(args):
     cat = {
         "source": source, "seller_id": seller, "discovered_at": datetime.now().isoformat(timespec="seconds"),
         "total_found": total_found, "all_asins": asins, "cap": cap, "note": note,
-        "products": [{"asin": a, "host": hosts.get(a, "www.amazon.com"), "title": titles.get(a, ""),
+        "products": [{"asin": a, "title": titles.get(a, ""), "status": "pending", "folder": folders[a]}
+                     if a in folders else
+                     {"asin": a, "host": hosts.get(a) or "www.amazon.com", "title": titles.get(a, ""),
                       "status": "pending"} for a in taken],
     }
     write_catalog(run, cat)
@@ -227,7 +277,8 @@ def cmd_discover(args):
     est_images = len(taken) * 4
     q = santa.DEFAULT_QUALITY
     est = est_images * santa.EST_PER_IMAGE[q]
-    mins = (est_images * santa.SECONDS_PER_IMAGE[q] / WORKERS_DEFAULT + len(taken) * SECONDS_PER_FETCH) / 60
+    fetches = sum(1 for a in taken if a not in folders)   # a folder is a copy, not a fetch
+    mins = (est_images * santa.SECONDS_PER_IMAGE[q] / WORKERS_DEFAULT + fetches * SECONDS_PER_FETCH) / 60
     log(f"Rough estimate: ~{est_images} images, ~${est:.2f}, ~{mins:.0f} min (quality {q}, ready to upload).")
     budget = max(int(DEFAULT_BUDGET), math.ceil(est * 1.3))
     log(f"Run folder: {run}")
@@ -246,6 +297,17 @@ def phase_fetch(run, cat):
         d = product_dir(run, p["asin"])
         if (d / "listing.json").exists() and len(santa.originals_of(d)) >= 2:
             p["status"] = "fetched"
+            write_catalog(run, cat)
+            continue
+        if p.get("folder"):   # a local product folder: a copy, no Amazon, no pause
+            if not Path(p["folder"]).is_dir():
+                p["status"] = "few"
+                log(f"  {p['asin']}: folder not found, {p['folder']}")
+            else:
+                n = santa.copy_folder(Path(p["folder"]), d, asin=p["asin"], title=p.get("title"))
+                p["status"] = "fetched" if n >= 2 else "few"
+                if n < 2:
+                    log(f"  {p['asin']}: fewer than 2 images, nothing to dress")
             write_catalog(run, cat)
             continue
         status, n = santa.fetch_listing(p["asin"], d, keep_page=False, host=p.get("host", "www.amazon.com"))
@@ -281,9 +343,13 @@ def phase_dedupe(run, cat):
         d = product_dir(run, p["asin"])
         lst = json.loads((d / "listing.json").read_text())
         dups = {}
-        for i, u in enumerate(lst.get("image_urls", []), 1):
-            fname = f"{i:02d}" + (".png" if u.lower().endswith(".png") else ".jpg")
-            key = u.rsplit("/", 1)[-1].split(".")[0]  # the image id, independent of size suffix
+        pairs = [(f"{i:02d}" + (".png" if u.lower().endswith(".png") else ".jpg"),
+                  u.rsplit("/", 1)[-1].split(".")[0])   # the image id, independent of size suffix
+                 for i, u in enumerate(lst.get("image_urls", []), 1)]
+        # a product folder has no URLs: the same bytes in two folders is the same image
+        pairs += [(f, hashlib.sha1((d / "originals" / f).read_bytes()).hexdigest())
+                  for f in lst.get("image_files", []) if (d / "originals" / f).exists()]
+        for fname, key in pairs:
             if key in seen and seen[key][0] != p["asin"]:
                 dups[fname] = seen[key]
             else:
@@ -502,6 +568,31 @@ def cmd_status(args):
     log(f"spent (images): ${spent(run, cat):.2f}")
 
 
+# Open the page with #tour at the end of the address and it walks itself: product by product,
+# flipping a few images to the original and back. For screen recordings and demos; a normal
+# visit is untouched.
+TOUR_JS = """<script>
+(function () {
+  if (location.hash !== '#tour') return;
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.card:not(.pending)'));
+  (async function () {
+    await wait(2500);
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].scrollIntoView({behavior: 'smooth', block: 'center'});
+      await wait(1900);
+      var tiles = cards[i].querySelectorAll('.tile');
+      if (tiles.length && i % 2 === 0) {
+        var t = tiles[Math.min(1, tiles.length - 1)];
+        t.classList.add('peek'); await wait(1500); t.classList.remove('peek'); await wait(700);
+      } else { await wait(700); }
+    }
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  })();
+})();
+</script>"""
+
+
 def write_index(run, cat):
     cards = []
     n_products = n_images = n_ready = 0
@@ -561,13 +652,14 @@ h2{{font-size:17px;margin:0 0 2px;font-weight:600}} .meta{{color:var(--mute);mar
 .tile::after{{content:"hover: before";position:absolute;left:8px;bottom:8px;font-size:11px;color:#fff;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:999px;opacity:0;transition:opacity .2s}}
 .tile:hover::after{{opacity:1;content:"before"}}
 .flag{{position:absolute;top:8px;right:8px;font-size:11px;background:var(--red);color:#fff;padding:2px 8px;border-radius:999px}}
+.tile.peek .before{{opacity:1}} .tile.peek::after{{opacity:1;content:"before"}}
 .foot{{color:var(--mute);font-size:13px;margin-top:30px}}
 </style></head><body><div class="wrap">
 <h1>Your store, <span>dressed for Christmas</span></h1>
 <p class="sub"><b>{n_products}</b> products &middot; <b>{n_images}</b> Christmas images &middot; {n_ready} passed every check &middot; est ${total_cost:.2f} (images ${image_cost:.2f}) &middot; main images untouched &middot; source: {src}</p>
 {''.join(cards)}
 <p class="foot">Generated with The Santa Skill, catalog mode (gpt-image-2). Hover any image for the original. Each product folder holds originals/, christmas/ and its own before/after sheet.</p>
-</div></body></html>"""
+</div>{TOUR_JS}</body></html>"""
     (run / "index.html").write_text(page)
 
     lines = [f"# Santa catalog report: {who}", "", f"Source: {cat.get('source')}",
