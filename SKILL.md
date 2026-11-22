@@ -146,7 +146,8 @@ in the rules file):
   swimwear and sunshine, plus string lights, tinsel, a small decorated palm or tree, gifts, red and gold.
   It wins over `winter`; the code also turns a winter pick whose `seen` line names a pool, a beach, the
   sea or swimwear into `sun`.
-At most one Santa hat, on an adult. The scene line says what goes WHERE and what must stay exactly
+At most one Santa hat, on an adult, and none when someone wears the product on the head (headphones,
+glasses, a cap): that person's head stays as it is. The scene line says what goes WHERE and what must stay exactly
 ("Keep the dog and the gray dog bed exactly as they are, nothing on the bed.").
 
 ## Step 3: generate

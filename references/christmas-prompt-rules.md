@@ -46,6 +46,9 @@ turns any winter pick whose `seen` line names a pool, a beach, the sea or swimwe
 
 Santa hat, in every mode: at most one, on one adult, named in the scene line; never on a child. A
 beanie or other winter hat is clothing, not a Santa hat.
+No Santa hat at all when someone wears the product on the head, face, ears or neck (headphones,
+glasses, a cap, earrings): the scene line says "No Santa hat (the product is worn)" and that person's
+head stays as it is, no beanie or hood either.
 
 ## Which images get transformed
 

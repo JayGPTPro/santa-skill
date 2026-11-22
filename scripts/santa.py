@@ -94,6 +94,14 @@ SUN_TEMPLATE = (
     "child, matching head shape, shadow and lighting. " + KEEP
 )
 TEMPLATES = {"scene": STRONG_TEMPLATE, "winter": WINTER_TEMPLATE, "sun": SUN_TEMPLATE}
+
+# A product worn on the head, face, ears or neck (headphones, glasses, a cap, earrings): a Santa hat or a winter
+# beanie lands ON the product. Measured 22.11.2026 on JBL headphones (B0CGMV5TMR): the classifier gave the woman
+# wearing them a Santa hat and the winter clothes added a beanie; all three frames failed nothing_touching. The
+# classifier now writes "No Santa hat (the product is worn)" and the prompt keeps that person's head as it is.
+WORN = re.compile(r"\bproduct is worn\b", re.I)
+WORN_KEEP = ("Whoever wears the product keeps their head, hair, face, ears and neck exactly as they are: no hat, "
+             "beanie, hood or scarf on, over or against the product.")
 # The code check behind the classifier's "sun" call: a winter pick whose picture holds water or swimwear.
 WATER_WORDS = re.compile(r"\b(pools?|poolside|beach(es)?|bikinis?|swim\w*|ocean|sea|seaside|surf(ing|er|ers|board)?)\b", re.I)
 
@@ -511,7 +519,10 @@ Decide role, action, and (for transforms) a scene line for gpt-image-2. Go throu
   small decorated palm or Christmas tree on the deck or sand, tinsel, wrapped gifts on the far side, red and
   gold accents. Never snow, never winter clothing.
   Santa hat: name the adult who gets it ("One natural red Santa hat on the father only"), or write
-  "No Santa hat (children only)" when only children appear. Never more than one.
+  "No Santa hat (children only)" when only children appear. Never more than one. If anyone in the
+  picture wears the product on the head, face, ears or neck (headphones, earbuds, glasses, a cap, a hair
+  clip, earrings, a necklace), write "No Santa hat (the product is worn)": a hat or a beanie would sit on
+  the product.
   Say what must stay exactly ("Keep the dog and the gray dog bed exactly as they are, nothing on the bed.").
   If the image carries a headline or labels, START with: Keep the headline '...' and the labels exactly as
   written, same position.
@@ -790,7 +801,11 @@ def build_prompt(img):
     lock = "Studio packshot. Keep the camera exactly where it is"
     if scene.startswith(lock):   # plans written before 26.9 carried the lock in the scene line
         scene = scene.split("The background stays a bright white studio.", 1)[-1].strip()
-    return TEMPLATES[prompt_mode(img)].format(scene=scene)
+    prompt = TEMPLATES[prompt_mode(img)].format(scene=scene)
+    if re.search(r"\bno Santa hats?\b", scene, re.I):
+        no_hat = "No Santa hats. " + (WORN_KEEP + " " if WORN.search(scene) else "")
+        prompt = re.sub(r"At most one natural red Santa hat.*?\. ", no_hat, prompt)
+    return prompt
 
 
 def fit_box(w, h, size):
